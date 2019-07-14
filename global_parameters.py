@@ -1,0 +1,4 @@
+TIMEDELTA_MOVE = 1.0  # sec
+TIMEDELTA_TURN = 10.0  # sec
+PART_SIZE = 100  # m
+C = 300000  # m/s
