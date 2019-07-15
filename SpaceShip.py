@@ -78,8 +78,8 @@ class SpaceShip(SpaceObject):
 
     @staticmethod
     def get_shield_x(direction: str, shields_dict: Dict, compartment_name: str) -> float:
-        if direction in compartment_name and 'shield' in compartment_name:
-            shield = shields_dict['broadside']
+        if direction in compartment_name and 'shield' in compartment_name and direction in ['left', 'right']:
+            shield = shields_dict.get('broadside', 0)
         else:
             shield = 0
 
@@ -87,16 +87,19 @@ class SpaceShip(SpaceObject):
 
     @staticmethod
     def get_shield_y(direction: str, shields_dict: Dict, ship_part_name: str) -> float:
-        if direction in ship_part_name and 'shield' in ship_part_name:
-            shield = shields_dict[direction]
+        if direction in ship_part_name and 'shield' in ship_part_name and direction in ['bow', 'stern']:
+            shield = shields_dict.get(direction, 0)
         else:
             shield = 0
 
         return shield
 
     @staticmethod
-    def get_shield_z(shields_dict: Dict) -> float:
-        shield = shields_dict['vertical']
+    def get_shield_z(direction: str, shields_dict: Dict) -> float:
+        if direction in ['top', 'bottom']:
+            shield = shields_dict.get('vertical', 0)
+        else:
+            shield = 0
 
         return shield
 
@@ -106,9 +109,9 @@ class SpaceShip(SpaceObject):
             armor = 0
         else:
             if direction in compartment_name:
-                armor = armor_dict['broadside']
+                armor = armor_dict.get('broadside', 0)
             else:
-                armor = armor_dict['inner']
+                armor = armor_dict.get('inner', 0)
 
         return armor
 
@@ -118,9 +121,9 @@ class SpaceShip(SpaceObject):
             armor = 0
         else:
             if direction in ship_part_name:
-                armor = armor_dict[direction]
+                armor = armor_dict.get(direction, 0)
             else:
-                armor = armor_dict['inner']
+                armor = armor_dict.get('inner', 0)
 
         return armor
 
@@ -129,7 +132,7 @@ class SpaceShip(SpaceObject):
         if 'shield' in ship_part_name or 'shield' in compartment_name:
             armor = 0
         else:
-            armor = armor_dict['vertical']
+            armor = armor_dict.get('vertical', 0)
 
         return armor
 
