@@ -8,28 +8,38 @@ import global_parameters as paras
 
 class SpaceObject:
     def __init__(self, name: str, size: np.array, mass: int, max_values: Dict[str, float],
-                 position: np.array = np.array([0, 0, 0]),
-                 velocity_val: float = 0,
-                 velocity_vec: np.array = np.array([0, 0, 0]),
-                 acceleration_val: float = 0,
-                 acceleration_vec: np.array = np.array([0, 0, 0])):
+                 position: np.array = np.array([0., 0., 0.]),
+                 velocity_val: float = 0.,
+                 velocity_vec: np.array = np.array([0., 0., 0.]),
+                 acceleration_val: float = 0.,
+                 acceleration_vec: np.array = np.array([0., 0., 0.])):
         self.name = name
         self.size = size
         self.mass = mass
         self.position = position
-        # TODO own function (val * vec)
-        self.velocity = velocity_val * velocity_vec
-        self.acceleration = acceleration_val * acceleration_vec
+        self.velocity = None
+        self.acceleration = None
         self.max_velocity = max_values['velocity']
         self.max_acceleration = max_values['acceleration']
 
-    def set_acceleration(self, acceleration, vec):
-        unit_vec = vf.get_unit_vector(vec)
-        if acceleration > self.max_acceleration:
-            # TODO consequences
-            acceleration = self.max_acceleration
+        self.set_velocity(velocity_val, velocity_vec)
+        self.set_acceleration(acceleration_val, acceleration_vec)
 
-        self.acceleration = acceleration * unit_vec
+    def set_velocity(self, v, v_vec):
+        unit_vec = vf.get_unit_vector(v_vec)
+        if v > self.max_velocity:
+            # TODO consequences
+            v = self.max_velocity
+
+        self.velocity = unit_vec * v
+
+    def set_acceleration(self, a, a_vec):
+        unit_vec = vf.get_unit_vector(a_vec)
+        if a > self.max_acceleration:
+            # TODO consequences
+            a = self.max_acceleration
+
+        self.acceleration = unit_vec * a
 
     def move(self):
         self.position += self.velocity * paras.TIMEDELTA_MOVE + 0.5 * self.acceleration * paras.TIMEDELTA_MOVE ** 2

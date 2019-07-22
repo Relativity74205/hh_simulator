@@ -42,10 +42,17 @@ ships = {'Cruiser': {'size': {'length': 600,
                      }
          }
 
-weapons = {'LaserMkI': {'damage': 1,
-                        'cycle_time': 10
-                        },
-           'LaserMkII': {'damage': 2,
-                         'cycle_time': 12
-                         }
+weapon_system = {'LaserMkI': {'type': 'beam_offensive',
+                              'cycle_time': 10
+                              },
+                 'LaserMkII': {'type': 'beam_offensive',
+                               'damage': 2,
+                               'cycle_time': 12
+                               }
+                 }
+
+weapons = {'LaserMkI': {'type': 'beam',
+                        'damage': 1},
+           'LaserMkII': {'type': 'beam',
+                         'damage': 2}
            }
