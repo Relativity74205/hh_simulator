@@ -5,7 +5,7 @@ import numpy as np
 
 from SpaceObject import SpaceObject
 from space_objects import ships
-from Weapon import BeamWeapon
+from Weapon import ShipWeapons
 import global_parameters as paras
 
 from Compartments import Compartment
@@ -34,10 +34,7 @@ class SpaceShip(SpaceObject):
         self.rotation = None
         self.rotation_velocity = None
         self.rotation_acceleration = None
-        self.weapons = {'stern': {},
-                        'aft': {},
-                        'left': {},
-                        'right': {}}
+        self.weapons = ShipWeapons()
         self.max_compartment_health = ship_class_dict['compartment_health']
         self.ship_parts, self.cnt_broadside_parts = self.create_ship_parts(size['length'])
         self.create_compartments(self.ship_parts,
@@ -51,30 +48,35 @@ class SpaceShip(SpaceObject):
         weapons_aft = weapons_dict['aft']
 
         inner_ship_part_keys = [key for key in self.ship_parts.keys() if 'inner' in self.ship_parts[key]['name']]
-        for weapon in weapons_broadside:
-            weapon_cnt = weapon['amount']
-            weapon_name = weapon['name']
+        for weapon_system in weapons_broadside:
+            weapon_system_cnt = weapon_system['amount']
+            weapon_system_name = weapon_system['name']
             cnt_weapons_part, surplus_weapons_index = \
-                self.get_surplus_weapons_array(weapon_cnt, self.cnt_broadside_parts)
+                self.get_surplus_weapons_array(weapon_system_cnt, self.cnt_broadside_parts)
 
             for key in inner_ship_part_keys:
                 inner_ship_part_index = int(self.ship_parts[key]['name'].split('_')[1]) - 1
                 if inner_ship_part_index in surplus_weapons_index:
-                    weapon_cnt += 1
-                self.add_weapon_to_compartment(weapon_name, weapon_cnt, key)
+                    weapon_system_cnt += 1
+                self.add_weapon_to_compartment('broadside', weapon_system_name, weapon_system_cnt, key)
 
-    def add_weapon_to_compartment(self, weapon_name: str, weapon_cnt: int, inner_ship_part_key: int):
-        weapon = BeamWeapon()
-        if weapon_name in self.weapons['left']:
-            self.weapons['left'][weapon_name] += weapon_cnt
-        else:
-            self.weapons['left'][weapon_name] = weapon_cnt
-        if weapon_name in self.weapons['left']:
-            self.weapons['right'][weapon_name] += weapon_cnt
-        else:
-            self.weapons['right'][weapon_name] = weapon_cnt
-
-        self.ship_parts[inner_ship_part_key]
+    def add_weapon_to_compartment(self, weapon_position: str, weapon_system_name: str, weapon_cnt: int,
+                                  inner_ship_part_key: int):
+        if weapon_position == 'broadside':
+            self.weapons.left.add_weapon(weapon_system_name, weapon_cnt)
+            self.weapons.right.add_weapon(weapon_system_name, weapon_cnt)
+            self.ship_parts[inner_ship_part_key]['compartments']['hull_left'].add_component(weapon_system_name,
+                                                                                            weapon_cnt)
+            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
+                                                                                             weapon_cnt)
+        elif weapon_position == 'aft':
+            self.weapons.bow.add_weapon(weapon_system_name, weapon_cnt)
+#            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
+#                                                                                             weapon_cnt)
+        elif weapon_position == 'stern':
+            self.weapons.stern.add_weapon(weapon_system_name, weapon_cnt)
+#            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
+#                                                                                             weapon_cnt)
 
     @staticmethod
     def get_surplus_weapons_array(weapon_cnt: int, cnt_broadside_parts: int) -> (int, List[int]):

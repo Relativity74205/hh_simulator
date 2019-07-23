@@ -33,4 +33,11 @@ class Compartment:
         self.health = compartment_health
         self.armor = Armor(armor_dict)
         self.shield = Shield(shield_dict)
-        self.components = []
+        self.components = {}
+
+    def add_component(self, component_name: str, component_count: int):
+        if component_name in self.components.keys():
+            self.components[component_name]['count'] += component_count
+        else:
+            self.components[component_name] = {'name': component_name,
+                                               'count': component_count}
