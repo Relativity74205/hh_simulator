@@ -7,7 +7,7 @@ import global_parameters as paras
 
 
 class SpaceObject:
-    def __init__(self, name: str, size: np.array, mass: int, max_values: Dict[str, float],
+    def __init__(self, name: str, size: np.array, mass: int, values_max: Dict[str, float],
                  position: np.array = np.array([0., 0., 0.]),
                  velocity_val: float = 0.,
                  velocity_vec: np.array = np.array([0., 0., 0.]),
@@ -19,25 +19,24 @@ class SpaceObject:
         self.position = position
         self.velocity = None
         self.acceleration = None
-        self.max_velocity = max_values['velocity']
-        self.max_acceleration = max_values['acceleration']
+        self.values_max = values_max
 
         self.set_velocity(velocity_val, velocity_vec)
         self.set_acceleration(acceleration_val, acceleration_vec)
 
     def set_velocity(self, v, v_vec):
         unit_vec = vf.get_unit_vector(v_vec)
-        if v > self.max_velocity:
+        if v > self.values_max['velocity']:
             # TODO consequences
-            v = self.max_velocity
+            v = self.values_max['velocity']
 
         self.velocity = unit_vec * v
 
     def set_acceleration(self, a, a_vec):
         unit_vec = vf.get_unit_vector(a_vec)
-        if a > self.max_acceleration:
+        if a > self.values_max['acceleration']:
             # TODO consequences
-            a = self.max_acceleration
+            a = self.values_max['acceleration']
 
         self.acceleration = unit_vec * a
 

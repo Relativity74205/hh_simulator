@@ -5,7 +5,7 @@ import numpy as np
 
 from SpaceObject import SpaceObject
 from space_objects import ships
-from Weapon import ShipWeapons
+from Weapon import ShipWeapons, create_weapon_system, WeaponSystem
 import global_parameters as paras
 
 from Compartments import Compartment
@@ -19,15 +19,14 @@ class SpaceShip(SpaceObject):
             print(f'No ship with name {ship_class_name} in dict defined.')
             raise
 
-        max_values = ship_class_dict['max_values']
+        values_max = ship_class_dict['max_values']
         mass = ship_class_dict['mass']
         size = ship_class_dict['size']
 
-        super().__init__(ship_class_name, size, mass, max_values)
-        self.max_orientation_velocity = max_values['orientation_velocity']
-        self.max_orientation_acceleration = max_values['orientation_acceleration']
-        self.max_rotation_velocity = max_values['rotation_velocity']
-        self.max_rotation_acceleration = max_values['rotation_acceleration']
+        super().__init__(ship_class_name, size, mass, values_max)
+        self.armor_dict = ship_class_dict['armor']
+        self.shields_dict = ship_class_dict['shields']
+        self.weapons_dict = ship_class_dict['weapons']
         self.orientation = None
         self.orientation_velocity = None
         self.orientation_acceleration = None
@@ -35,48 +34,83 @@ class SpaceShip(SpaceObject):
         self.rotation_velocity = None
         self.rotation_acceleration = None
         self.weapons = ShipWeapons()
-        self.max_compartment_health = ship_class_dict['compartment_health']
-        self.ship_parts, self.cnt_broadside_parts = self.create_ship_parts(size['length'])
-        self.create_compartments(self.ship_parts,
-                                 ship_class_dict['armor'], ship_class_dict['shields'],
-                                 self.max_compartment_health)
-        self.add_weapons(ship_class_dict['weapons'])
+        self.compartments = []
+        self.compartment_health_max = ship_class_dict['compartment_health']
+        # TODO refactor
+        self.ship_length = int(self.size['length']/paras.PART_SIZE)
 
-    def add_weapons(self, weapons_dict: Dict):
-        weapons_broadside = weapons_dict['broadside']
-        weapons_stern = weapons_dict['stern']
-        weapons_aft = weapons_dict['aft']
+        self.create_compartments()
+        self.add_weapons_broadside()
 
-        inner_ship_part_keys = [key for key in self.ship_parts.keys() if 'inner' in self.ship_parts[key]['name']]
-        for weapon_system in weapons_broadside:
-            weapon_system_cnt = weapon_system['amount']
-            weapon_system_name = weapon_system['name']
-            cnt_weapons_part, surplus_weapons_index = \
-                self.get_surplus_weapons_array(weapon_system_cnt, self.cnt_broadside_parts)
+    def init_parameters(self,
+                        orientation: np.array = np.array([0, 0, 0]),
+                        orientation_velocity: np.array = np.array([0, 0, 0]),
+                        orientation_acceleration: np.array = np.array([0, 0, 0]),
+                        rotation: int = 0,
+                        rotation_velocity: int = 0,
+                        rotation_acceleration: int = 0):
+        self.orientation = orientation
+        self.orientation_velocity = orientation_velocity
+        self.orientation_acceleration = orientation_acceleration
+        self.rotation = rotation
+        self.rotation_velocity = rotation_velocity
+        self.rotation_acceleration = rotation_acceleration
 
-            for key in inner_ship_part_keys:
-                inner_ship_part_index = int(self.ship_parts[key]['name'].split('_')[1]) - 1
-                if inner_ship_part_index in surplus_weapons_index:
-                    weapon_system_cnt += 1
-                self.add_weapon_to_compartment('broadside', weapon_system_name, weapon_system_cnt, key)
+    def create_compartments(self):
+        if self.ship_length <= 1:
+            raise ValueError(f'ship_length of {self.ship_length} too small')
+        ship_parts = ['bow'] + [f'center_{i}' for i in range(1, self.ship_length - 1)] + ['stern']
 
-    def add_weapon_to_compartment(self, weapon_position: str, weapon_system_name: str, weapon_cnt: int,
-                                  inner_ship_part_key: int):
-        if weapon_position == 'broadside':
-            self.weapons.left.add_weapon(weapon_system_name, weapon_cnt)
-            self.weapons.right.add_weapon(weapon_system_name, weapon_cnt)
-            self.ship_parts[inner_ship_part_key]['compartments']['hull_left'].add_component(weapon_system_name,
-                                                                                            weapon_cnt)
-            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
-                                                                                             weapon_cnt)
-        elif weapon_position == 'aft':
-            self.weapons.bow.add_weapon(weapon_system_name, weapon_cnt)
-#            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
-#                                                                                             weapon_cnt)
-        elif weapon_position == 'stern':
-            self.weapons.stern.add_weapon(weapon_system_name, weapon_cnt)
-#            self.ship_parts[inner_ship_part_key]['compartments']['hull_right'].add_component(weapon_system_name,
-#                                                                                             weapon_cnt)
+        for pos_y, ship_part_x in enumerate(ship_parts):
+            for pos_x, ship_part_y in enumerate(['hull_left', 'center', 'hull_right'], -1):
+                compartment_name = f'{ship_part_x}-{ship_part_y}'
+                compartment_armor = self.create_compartment_defense(self.armor_dict, ship_part_x, ship_part_y)
+                compartment_shield = self.create_compartment_defense(self.shields_dict, ship_part_x, ship_part_y)
+                compartment_health = self.compartment_health_max
+
+                compartment = Compartment(compartment_name, pos_x, pos_y, compartment_health,
+                                          compartment_armor, compartment_shield)
+                self.compartments.append(compartment)
+
+    def add_weapons_broadside(self):
+        cnt_broadside_parts = self.get_cnt_broadside_parts(self.ship_length)
+        broadside_indices = list(range(cnt_broadside_parts))
+        for orientation in ['left', 'right', 'bow', 'stern']:
+            weapon_systems: List = self.get_weapon_systems(orientation, self.weapons_dict)
+
+            for weapon_system in weapon_systems:
+                weapon_system_cnt = weapon_system['amount']
+                weapon_system_name = weapon_system['name']
+                cnt_weapons_part, surplus_weapons_index = \
+                    self.get_surplus_weapons_array(weapon_system_cnt, cnt_broadside_parts)
+
+                for broadside_index in broadside_indices:
+                    for _ in range(cnt_weapons_part + broadside_index in surplus_weapons_index):
+                        self.create_weapon(weapon_system_name, orientation, broadside_index)
+
+    @staticmethod
+    def get_cnt_broadside_parts(ship_length: int) -> int:
+        return ship_length - 2
+
+    @staticmethod
+    def get_weapon_systems(orientation: str, weapons_dict: Dict) -> List:
+        if orientation in ['left', 'right']:
+            weapon_systems = weapons_dict['broadside']
+        else:
+            weapon_systems = weapons_dict[orientation]
+
+        return weapon_systems
+
+    def create_weapon(self, weapon_system_name: str, orientation: str, broadside_index: int):
+        weapon_system = create_weapon_system(weapon_system_name, orientation)
+        self.weapons.add_weapon_system(weapon_system)
+        self.add_weapon_to_compartment(weapon_system, orientation, broadside_index)
+
+    def add_weapon_to_compartment(self, weapon: WeaponSystem, orientation: str, pos_y: int):
+        for compartment in self.compartments:
+            if compartment.pos_y == pos_y and orientation in compartment.ship_part_x:
+                compartment.add_component(weapon)
+                break
 
     @staticmethod
     def get_surplus_weapons_array(weapon_cnt: int, cnt_broadside_parts: int) -> (int, List[int]):
@@ -93,146 +127,30 @@ class SpaceShip(SpaceObject):
 
         return cnt_weapons_part, surplus_weapons_index
 
-    def create_compartments(self, ship_parts: Dict, armor_dict: Dict, shields_dict: Dict, max_compartment_health: float):
-        for _, ship_part in ship_parts.items():
-            ship_part_name = ship_part['name']
-            compartments = ship_part['compartments']
-            for compartment_name in compartments.keys():
-                compartment_health = self.get_compartment_health(compartment_name,
-                                                                 ship_part_name,
-                                                                 max_compartment_health)
-
-                compartment_shield = dict()
-                compartment_shield['left'] = self.get_shield_x('left', shields_dict, compartment_name)
-                compartment_shield['right'] = self.get_shield_x('right', shields_dict, compartment_name)
-                compartment_shield['bow'] = self.get_shield_y('bow', shields_dict, compartment_name)
-                compartment_shield['stern'] = self.get_shield_y('stern', shields_dict, compartment_name)
-                compartment_shield['top'] = self.get_shield_z('top', shields_dict)
-                compartment_shield['bottom'] = self.get_shield_z('bottom', shields_dict)
-
-                compartment_armor = dict()
-                compartment_armor['left'] = self.get_armor_x('left', armor_dict, compartment_name, ship_part_name)
-                compartment_armor['right'] = self.get_armor_x('right', armor_dict, compartment_name, ship_part_name)
-                compartment_armor['bow'] = self.get_armor_y('bow', armor_dict, compartment_name, ship_part_name)
-                compartment_armor['stern'] = self.get_armor_y('stern', armor_dict, compartment_name, ship_part_name)
-                compartment_armor['top'] = self.get_armor_z('top', armor_dict, compartment_name, ship_part_name)
-                compartment_armor['bottom'] = self.get_armor_z('bottom', armor_dict, compartment_name, ship_part_name)
-
-                compartments[compartment_name] = Compartment('', compartment_health, compartment_armor, compartment_shield)
-
     @staticmethod
-    def get_compartment_health(compartment_name: str, ship_part_name: str, health: float) -> float:
-        if compartment_name.startswith('shield') or ship_part_name.endswith('shield'):
-            compartment_health = 0
+    def create_compartment_defense(armor_dict: Dict, ship_part_x: str, ship_part_y: str) -> Dict[str, float]:
+        directions = ['left', 'right', 'bow', 'stern', 'top', 'bottom']
+        compartment_armor = {direction: get_defense_val(direction, armor_dict, ship_part_x, ship_part_y)
+                             for direction in directions}
+
+        return compartment_armor
+
+
+def get_defense_val(direction: str, defense_dict: Dict, ship_part_x: str, ship_part_y: str) -> float:
+    if direction in ['left', 'right']:
+        if direction in ship_part_x:
+            defense_val = defense_dict.get('broadside', 0)
         else:
-            compartment_health = health
-
-        return compartment_health
-
-    @staticmethod
-    def get_shield_x(direction: str, shields_dict: Dict, compartment_name: str) -> float:
-        if direction in compartment_name and 'shield' in compartment_name and direction in ['left', 'right']:
-            shield = shields_dict.get('broadside', 0)
+            defense_val = defense_dict.get('inner', 0)
+    elif direction in ['bow', 'stern']:
+        if direction in ship_part_y:
+            defense_val = defense_dict.get(direction, 0)
         else:
-            shield = 0
+            defense_val = defense_dict.get('inner', 0)
+    elif direction in ['top', 'bottom']:
+        defense_val = defense_dict.get('vertical', 0)
+    else:
+        # TODO
+        raise ValueError
 
-        return shield
-
-    @staticmethod
-    def get_shield_y(direction: str, shields_dict: Dict, ship_part_name: str) -> float:
-        if direction in ship_part_name and 'shield' in ship_part_name and direction in ['bow', 'stern']:
-            shield = shields_dict.get(direction, 0)
-        else:
-            shield = 0
-
-        return shield
-
-    @staticmethod
-    def get_shield_z(direction: str, shields_dict: Dict) -> float:
-        if direction in ['top', 'bottom']:
-            shield = shields_dict.get('vertical', 0)
-        else:
-            shield = 0
-
-        return shield
-
-    @staticmethod
-    def get_armor_x(direction: str, armor_dict: Dict, compartment_name: str, ship_part_name: str) -> float:
-        if 'shield' in ship_part_name or 'shield' in compartment_name:
-            armor = 0
-        else:
-            if direction in compartment_name and direction in ['left', 'right']:
-                armor = armor_dict.get('broadside', 0)
-            else:
-                armor = armor_dict.get('inner', 0)
-
-        return armor
-
-    @staticmethod
-    def get_armor_y(direction: str, armor_dict: Dict, compartment_name: str, ship_part_name: str) -> float:
-        if 'shield' in ship_part_name or 'shield' in compartment_name:
-            armor = 0
-        else:
-            if direction in ship_part_name and direction in ['bow', 'stern']:
-                armor = armor_dict.get(direction, 0)
-            else:
-                armor = armor_dict.get('inner', 0)
-
-        return armor
-
-    @staticmethod
-    def get_armor_z(direction: str, armor_dict: Dict, compartment_name: str, ship_part_name: str) -> float:
-        if 'shield' in ship_part_name or 'shield' in compartment_name:
-            armor = 0
-        else:
-            if direction in ['top', 'bottom']:
-                armor = armor_dict.get('vertical', 0)
-            else:
-                armor = 0
-
-        return armor
-
-    @staticmethod
-    def create_ship_parts(length: int) -> (Dict[int, Dict], int):
-        ship_part_length = int(length/paras.PART_SIZE)
-
-        if ship_part_length > 1:
-            ship_parts = {0: get_compartments_dict('bow_shield'),
-                          1: get_compartments_dict('bow'),
-                          ship_part_length: get_compartments_dict('stern'),
-                          ship_part_length + 1: get_compartments_dict('stern_shield')
-                          }
-
-            cnt_broadside_parts = 0
-            for i in range(2, ship_part_length):
-                ship_parts[i] = get_compartments_dict(f'inner_{i}')
-                cnt_broadside_parts += 1
-        else:
-            raise ValueError(f'ship_length of {length} too small')
-
-        return ship_parts, cnt_broadside_parts
-
-    def init_parameters(self,
-                        orientation: np.array = np.array([0, 0, 0]),
-                        orientation_velocity: np.array = np.array([0, 0, 0]),
-                        orientation_acceleration: np.array = np.array([0, 0, 0]),
-                        rotation: int = 0,
-                        rotation_velocity: int = 0,
-                        rotation_acceleration: int = 0):
-        self.orientation = orientation
-        self.orientation_velocity = orientation_velocity
-        self.orientation_acceleration = orientation_acceleration
-        self.rotation = rotation
-        self.rotation_velocity = rotation_velocity
-        self.rotation_acceleration = rotation_acceleration
-
-
-def get_compartments_dict(name: str):
-    return {'name': name,
-            'compartments': {'shield_left': None,
-                             'hull_left': None,
-                             'middle': None,
-                             'hull_right': None,
-                             'shield_right': None
-                             }
-            }
+    return defense_val

@@ -42,16 +42,21 @@ ships = {'Cruiser': {'size': {'length': 600,
                      }
          }
 
-weapon_systems = {'LaserMkI': {'type': 'beam_offensive',
-                               'cycle_time': 10
+weapon_systems = {'LaserMkI': {'type': 'beam',
+                               'subtype': 'beam_offensive',
+                               'cycle_time': 10,
+                               'damage': 1
                                },
-                  'LaserMkII': {'type': 'beam_offensive',
-                                'cycle_time': 12
-                                }
+                  'LaserMkII': {'type': 'beam',
+                                'subtype': 'beam_offensive',
+                                'cycle_time': 12,
+                                'damage': 2
+                                },
+                  'AntiMissileMkI': {'type': 'rocket_launcher',
+                                     'subtype': 'anti_missile',
+                                     'cycle_time': 5}
                   }
 
-weapons = {'LaserMkI': {'type': 'beam',
-                        'damage': 1},
-           'LaserMkII': {'type': 'beam',
-                         'damage': 2}
-           }
+ordnance = {'AntiMissileRocketMki': {'type': 'rocket',
+                                     'damage': 1}
+            }
