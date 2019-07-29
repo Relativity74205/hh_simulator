@@ -36,11 +36,10 @@ class SpaceShip(SpaceObject):
         self.weapons = ShipWeapons()
         self.compartments = []
         self.compartment_health_max = ship_class_dict['compartment_health']
-        # TODO refactor
-        self.ship_length = int(self.size['length']/paras.PART_SIZE)
+        self.ship_length = get_ship_length(self.size)
 
         self.create_compartments()
-        self.add_weapons_broadside()
+        self.add_weapons()
 
     def init_parameters(self,
                         orientation: np.array = np.array([0, 0, 0]),
@@ -72,11 +71,11 @@ class SpaceShip(SpaceObject):
                                           compartment_armor, compartment_shield)
                 self.compartments.append(compartment)
 
-    def add_weapons_broadside(self):
-        cnt_broadside_parts = self.get_cnt_broadside_parts(self.ship_length)
+    def add_weapons(self):
+        cnt_broadside_parts = get_cnt_broadside_parts(self.ship_length)
         broadside_indices = list(range(cnt_broadside_parts))
         for orientation in ['left', 'right', 'bow', 'stern']:
-            weapon_systems: List = self.get_weapon_systems(orientation, self.weapons_dict)
+            weapon_systems: List = get_weapon_systems(orientation, self.weapons_dict)
 
             for weapon_system in weapon_systems:
                 weapon_system_cnt = weapon_system['amount']
@@ -88,25 +87,12 @@ class SpaceShip(SpaceObject):
                     for _ in range(cnt_weapons_part + broadside_index in surplus_weapons_index):
                         self.create_weapon(weapon_system_name, orientation, broadside_index)
 
-    @staticmethod
-    def get_cnt_broadside_parts(ship_length: int) -> int:
-        return ship_length - 2
-
-    @staticmethod
-    def get_weapon_systems(orientation: str, weapons_dict: Dict) -> List:
-        if orientation in ['left', 'right']:
-            weapon_systems = weapons_dict['broadside']
-        else:
-            weapon_systems = weapons_dict[orientation]
-
-        return weapon_systems
-
     def create_weapon(self, weapon_system_name: str, orientation: str, broadside_index: int):
         weapon_system = create_weapon_system(weapon_system_name, orientation)
         self.weapons.add_weapon_system(weapon_system)
-        self.add_weapon_to_compartment(weapon_system, orientation, broadside_index)
+        self._add_weapon_to_compartment(weapon_system, orientation, broadside_index)
 
-    def add_weapon_to_compartment(self, weapon: WeaponSystem, orientation: str, pos_y: int):
+    def _add_weapon_to_compartment(self, weapon: WeaponSystem, orientation: str, pos_y: int):
         for compartment in self.compartments:
             if compartment.pos_y == pos_y and orientation in compartment.ship_part_x:
                 compartment.add_component(weapon)
@@ -128,12 +114,12 @@ class SpaceShip(SpaceObject):
         return cnt_weapons_part, surplus_weapons_index
 
     @staticmethod
-    def create_compartment_defense(armor_dict: Dict, ship_part_x: str, ship_part_y: str) -> Dict[str, float]:
+    def create_compartment_defense(defense_dict: Dict, ship_part_x: str, ship_part_y: str) -> Dict[str, float]:
         directions = ['left', 'right', 'bow', 'stern', 'top', 'bottom']
-        compartment_armor = {direction: get_defense_val(direction, armor_dict, ship_part_x, ship_part_y)
+        compartment_defense = {direction: get_defense_val(direction, defense_dict, ship_part_x, ship_part_y)
                              for direction in directions}
 
-        return compartment_armor
+        return compartment_defense
 
 
 def get_defense_val(direction: str, defense_dict: Dict, ship_part_x: str, ship_part_y: str) -> float:
@@ -154,3 +140,20 @@ def get_defense_val(direction: str, defense_dict: Dict, ship_part_x: str, ship_p
         raise ValueError
 
     return defense_val
+
+
+def get_ship_length(size: Dict[str, int]) -> int:
+    return int(size['length'] / paras.PART_SIZE)
+
+
+def get_cnt_broadside_parts(ship_length: int) -> int:
+    return ship_length - 2
+
+
+def get_weapon_systems(orientation: str, weapons_dict: Dict[str, List]) -> List:
+    if orientation in ['left', 'right']:
+        weapon_systems = weapons_dict['broadside']
+    else:
+        weapon_systems = weapons_dict[orientation]
+
+    return weapon_systems
