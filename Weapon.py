@@ -9,6 +9,7 @@ from Rocket import Rocket
 class WeaponSystem:
     orientation: str
     type: str
+    subtype: str
     name: str
     cycle_time: float
     count: int = 0
@@ -22,7 +23,7 @@ class BeamWeapon(WeaponSystem):
 @dataclass
 class RocketLauncher(WeaponSystem):
     ordnance: Rocket = None
-    ordnance_count: int = None
+    ordnance_count: int = 0
 
     def add_ordnance(self, ordnance_name: str, ordnance_count):
         self.ordnance_count = ordnance_count
@@ -34,15 +35,19 @@ class ShipWeapons:
     weapon_systems: List = field(default_factory=list, init=False)
 
     def add_weapon_system(self, weapon: WeaponSystem):
-        self.weapon_systems.append(weapon)
+        if isinstance(weapon, WeaponSystem):
+            self.weapon_systems.append(weapon)
+        else:
+            raise TypeError('attribute passed to add_weapon_system is not a WeaponSystem')
 
 
 def create_weapon_system(weapon_system_name: str, orientation: str) -> WeaponSystem:
     try:
-        weapon_system_dict = weapon_systems[weapon_system_name]
+        weapon_system_dict = weapon_systems[weapon_system_name].copy()
     except KeyError:
         raise KeyError('Weapon system not found')
 
+    weapon_system_dict['name'] = weapon_system_name
     if weapon_system_dict['type'] == 'beam':
         weapon = BeamWeapon(orientation, **weapon_system_dict)
     elif weapon_system_dict['type'] == 'rocket_launcher':

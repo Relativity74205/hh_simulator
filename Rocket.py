@@ -1,7 +1,7 @@
 import numpy as np
 
 from SpaceObject import SpaceObject
-from space_objects import weapon_systems, ordnance, weapons
+from space_objects import weapon_systems, ordnance
 
 
 class Rocket(SpaceObject):
@@ -9,7 +9,7 @@ class Rocket(SpaceObject):
                  position: np.array = np.array([0, 0, 0]),
                  velocity_vec: np.array = np.array([0, 0, 0])):
         try:
-            weapon_dict = weapons[weapon_name]
+            weapon_dict = ordnance[weapon_name]
         except KeyError:
             print(f'No ship with name {weapon_name} in dict defined.')
             raise

@@ -36,5 +36,6 @@ class Compartment:
         self.shield_max: Shield = Shield(**shield_dict)
         self.components: List = []
 
+    # TODO add check for correct component type
     def add_component(self, component: any):
         self.components.append(component)
