@@ -38,9 +38,6 @@ class SpaceShip(SpaceObject):
         self.compartment_health_max = ship_class_dict['compartment_health']
         self.ship_length = get_ship_length(self.size)
 
-        self.create_compartments()
-        self.add_weapons()
-
     def init_parameters(self,
                         orientation: np.array = np.array([0, 0, 0]),
                         orientation_velocity: np.array = np.array([0, 0, 0]),
@@ -54,6 +51,9 @@ class SpaceShip(SpaceObject):
         self.rotation = rotation
         self.rotation_velocity = rotation_velocity
         self.rotation_acceleration = rotation_acceleration
+
+        self.create_compartments()
+        self.add_weapons()
 
     def create_compartments(self):
         if self.ship_length <= 1:
@@ -99,25 +99,10 @@ class SpaceShip(SpaceObject):
                 break
 
     @staticmethod
-    def get_surplus_weapons_array(weapon_cnt: int, cnt_broadside_parts: int) -> (int, List[int]):
-        if cnt_broadside_parts == 0:
-            cnt_weapons_part = 0
-            surplus_weapons_index = []
-        else:
-            cnt_weapons_part = int(weapon_cnt / cnt_broadside_parts)
-            surplus_weapons = weapon_cnt - cnt_weapons_part * cnt_broadside_parts
-            surplus_weapons_index = [math.floor((i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons)
-                                     if (i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons < cnt_broadside_parts / 2
-                                     else math.ceil((i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons)
-                                     for i in range(surplus_weapons)]
-
-        return cnt_weapons_part, surplus_weapons_index
-
-    @staticmethod
     def create_compartment_defense(defense_dict: Dict, ship_part_x: str, ship_part_y: str) -> Dict[str, float]:
         directions = ['left', 'right', 'bow', 'stern', 'top', 'bottom']
         compartment_defense = {direction: get_defense_val(direction, defense_dict, ship_part_x, ship_part_y)
-                             for direction in directions}
+                               for direction in directions}
 
         return compartment_defense
 
@@ -143,7 +128,11 @@ def get_defense_val(direction: str, defense_dict: Dict, ship_part_x: str, ship_p
 
 
 def get_ship_length(size: Dict[str, int]) -> int:
-    return int(size['length'] / paras.PART_SIZE)
+    ship_length = int(size['length'] / paras.PART_SIZE)
+    if ship_length < 2:
+        raise ValueError(f'ship length {ship_length} is too short')
+
+    return ship_length
 
 
 def get_cnt_broadside_parts(ship_length: int) -> int:
@@ -153,7 +142,24 @@ def get_cnt_broadside_parts(ship_length: int) -> int:
 def get_weapon_systems(orientation: str, weapons_dict: Dict[str, List]) -> List:
     if orientation in ['left', 'right']:
         weapon_systems = weapons_dict['broadside']
-    else:
+    elif orientation in ['bow', 'stern']:
         weapon_systems = weapons_dict[orientation]
+    else:
+        raise ValueError(f'orientation {orientation} not allowed')
 
     return weapon_systems
+
+
+def get_surplus_weapons_array(weapon_cnt: int, cnt_broadside_parts: int) -> (int, List[int]):
+    if cnt_broadside_parts == 0:
+        cnt_weapons_part = 0
+        surplus_weapons_index = []
+    else:
+        cnt_weapons_part = int(weapon_cnt / cnt_broadside_parts)
+        surplus_weapons = weapon_cnt - cnt_weapons_part * cnt_broadside_parts
+        surplus_weapons_index = [math.floor((i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons)
+                                 if (i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons < cnt_broadside_parts / 2
+                                 else math.ceil((i + 0.5) * (cnt_broadside_parts - 1) / surplus_weapons)
+                                 for i in range(surplus_weapons)]
+
+    return cnt_weapons_part, surplus_weapons_index
