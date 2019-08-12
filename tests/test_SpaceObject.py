@@ -9,7 +9,7 @@ zero_vec = np.zeros(3)
 ship_dict = {'name': 'Cruiser',
              'size': [100, 20, 20],
              'mass': 50000,
-             'max_values': {'velocity': 100000,
+             'values_max': {'velocity': 100000,
                             'acceleration': 500,
                             'orientation_velocity': 0.5,
                             'orientation_acceleration': 0.1,
@@ -24,8 +24,13 @@ def test_spaceobject():
     assert so.name == 'Cruiser'
     assert so.size == [100, 20, 20]
     assert so.mass == 50000
-    assert so.max_velocity == 100000
-    assert so.max_acceleration == 500
+    assert so.values_max == {'velocity': 100000,
+                             'acceleration': 500,
+                             'orientation_velocity': 0.5,
+                             'orientation_acceleration': 0.1,
+                             'rotation_velocity': 0.5,
+                             'rotation_acceleration': 0.1
+                             }
     np.testing.assert_array_equal(so.position, zero_vec)
     np.testing.assert_array_equal(so.velocity, zero_vec)
     np.testing.assert_array_equal(so.acceleration, zero_vec)
