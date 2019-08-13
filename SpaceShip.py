@@ -58,18 +58,21 @@ class SpaceShip(SpaceObject):
     def create_compartments(self):
         if self.ship_length <= 1:
             raise ValueError(f'ship_length of {self.ship_length} too small')
-        ship_parts = ['bow'] + [f'center_{i}' for i in range(1, self.ship_length - 1)] + ['stern']
+        ship_parts = get_ship_parts(self.ship_length)
 
         for pos_y, ship_part_x in enumerate(ship_parts):
             for pos_x, ship_part_y in enumerate(['hull_left', 'center', 'hull_right'], -1):
-                compartment_name = f'{ship_part_x}-{ship_part_y}'
-                compartment_armor = self.create_compartment_defense(self.armor_dict, ship_part_x, ship_part_y)
-                compartment_shield = self.create_compartment_defense(self.shields_dict, ship_part_x, ship_part_y)
-                compartment_health = self.compartment_health_max
-
-                compartment = Compartment(compartment_name, pos_x, pos_y, compartment_health,
-                                          compartment_armor, compartment_shield)
+                compartment = self.create_compartment(pos_x, pos_y, ship_part_x, ship_part_y)
                 self.compartments.append(compartment)
+
+    def create_compartment(self, pos_x, pos_y, ship_part_x, ship_part_y):
+        compartment_name = f'{ship_part_x}-{ship_part_y}'
+        compartment_armor = self.create_compartment_defense(self.armor_dict, ship_part_x, ship_part_y)
+        compartment_shield = self.create_compartment_defense(self.shields_dict, ship_part_x, ship_part_y)
+        compartment_health = self.compartment_health_max
+        compartment = Compartment(compartment_name, pos_x, pos_y, compartment_health,
+                                  compartment_armor, compartment_shield)
+        return compartment
 
     def add_weapons(self):
         cnt_broadside_parts = get_cnt_broadside_parts(self.ship_length)
@@ -163,3 +166,7 @@ def get_surplus_weapons_array(weapon_cnt: int, cnt_broadside_parts: int) -> (int
                                  for i in range(surplus_weapons)]
 
     return cnt_weapons_part, surplus_weapons_index
+
+
+def get_ship_parts(ship_length):
+    return ['bow'] + [f'center_{i}' for i in range(1, ship_length - 1)] + ['stern']
